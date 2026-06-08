@@ -1,0 +1,65 @@
+{
+  "include": [
+    "~/.config/waybar/modules/niri/workspaces.jsonc",
+    "~/.config/waybar/modules/niri/window.jsonc",
+    "~/.config/waybar/modules/tray.jsonc",
+    "~/.config/waybar/modules/cava.jsonc",
+    "~/.config/waybar/modules/temperature.jsonc",
+    "~/.config/waybar/modules/memory.jsonc",
+    "~/.config/waybar/modules/cpu.jsonc",
+    "~/.config/waybar/modules/idle_inhibitor.jsonc",
+    "~/.config/waybar/modules/clock.jsonc",
+    // "~/.config/waybar/modules/bluetooth.jsonc",
+    "~/.config/waybar/modules/pulseaudio.jsonc",
+    "~/.config/waybar/modules/backlight.jsonc",
+    "~/.config/waybar/modules/battery.jsonc",
+    "~/.config/waybar/modules/taskbar.jsonc"
+    // "~/.config/waybar/modules/network.jsonc"
+  ],
+  "layer": "top",
+  "position": "top",
+  "margin-top": 6,
+  "margin-left": 8,
+  "margin-right": 8,
+  "spacing": 4,
+  "modules-left": [
+    "niri/workspaces",
+    "tray",
+    "niri/window"
+  ],
+  "modules-center": [
+    "group/datetime",
+    "group/hardware"
+    // "group/connections"
+  ],
+  "modules-right": [
+    "cava",
+    "group/pulseaudio",
+    "backlight",
+    "battery",
+    "idle_inhibitor"
+  ],
+  "group/hardware": {
+    "orientation": "horizontal",
+    "modules": [
+      "cpu",
+      "memory",
+      "temperature"
+    ]
+  },
+  "group/datetime": {
+    "orientation": "horizontal",
+    "modules": [
+      "clock#time",
+      "clock#date"
+    ]
+  },
+  "group/connections": {
+    "orientation": "horizontal",
+    "modules": [
+      "network",
+      "bluetooth"
+    ]
+  },
+  "reload_style_on_change": true
+}

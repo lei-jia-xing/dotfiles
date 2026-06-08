@@ -1,0 +1,8 @@
+{
+  "niri/window": {
+    "format": "{title}",
+    "swap-icon-label": true,
+    "icon": true,
+    "icon-size": 18
+  }
+}

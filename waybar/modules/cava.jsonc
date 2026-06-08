@@ -1,0 +1,9 @@
+{
+  "cava": {
+    "cava_config": "$XDG_CONFIG_HOME/cava/waybar_cava#3.conf",
+    "input_delay": 2,
+    "actions": {
+      "on-click-right": "mode"
+    }
+  }
+}
