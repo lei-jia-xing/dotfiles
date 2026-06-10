@@ -5,8 +5,6 @@ if status is-interactive # Commands to run in interactive sessions can go here
 
     starship init fish | source
 
-    # Aliases
-    alias pamcan pacman
     alias ls 'eza --icons'
     alias ta 'tmux attach -t main 2>/dev/null || tmux new -s main'
     alias ssh 'kitty +kitten ssh'
