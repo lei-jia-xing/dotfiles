@@ -32,39 +32,6 @@ vim.schedule(function()
 	vim.opt.clipboard = "unnamedplus"
 end)
 
-vim.filetype.add({
-	extension = {
-		cshtml = "aspnetcorerazor",
-		edge = "edge",
-		ejs = "ejs",
-		erb = "erb",
-		gotmpl = "gotmpl",
-		gohtml = "gohtml",
-		gohtmltmpl = "gohtmltmpl",
-		hbs = "hbs",
-		jade = "jade",
-		leaf = "leaf",
-		mdx = "mdx",
-		njk = "njk",
-		nunjucks = "nunjucks",
-		postcss = "postcss",
-		razor = "razor",
-		re = "reason",
-		rei = "reason",
-		slim = "slim",
-		sugarss = "sugarss",
-	},
-	filename = {
-		["astro.config.mjs"] = "astro",
-		["astro.config.ts"] = "astro",
-	},
-	pattern = {
-		[".*%.astro%.md"] = "astro-markdown",
-		[".*%.django%.html"] = "django-html",
-		[".*%.html%.eex"] = "html-eex",
-	},
-})
-
 vim.keymap.set("n", "<Esc>", "<cmd>nohlsearch<CR>")
 vim.diagnostic.config({
 	update_in_insert = false,
@@ -179,6 +146,9 @@ vim.api.nvim_create_autocmd("TextYankPost", {
 local gh = function(repo)
 	return "https://github.com/" .. repo
 end
+-- local cb = function(repo)
+-- 	return "https://codeberg.org/" .. repo
+-- end
 
 local plugins = {
 	-- colorscheme
@@ -218,7 +188,6 @@ local plugins = {
 	gh("refractalize/oil-git-status.nvim"),
 	gh("folke/todo-comments.nvim"),
 	gh("xiyaowong/transparent.nvim"),
-	gh("lervag/vimtex"),
 	gh("folke/which-key.nvim"),
 }
 
@@ -276,6 +245,7 @@ require("conform").setup({
 	-- },
 	formatters_by_ft = {
 		lua = { "stylua" },
+		cmake = { "cmake_format" },
 		javascript = { "prettier" },
 		typescript = { "prettier" },
 		javascriptreact = { "prettier" },
@@ -286,6 +256,7 @@ require("conform").setup({
 		rust = { "rustfmt" },
 		c = { "clang-format" },
 		cpp = { "clang-format" },
+		kotlin = { "ktlint" },
 		sh = { "shfmt" },
 		bash = { "shfmt" },
 		zsh = { "shfmt" },
@@ -390,16 +361,22 @@ require("lazydev").setup()
 
 -- lspconfig
 vim.lsp.enable("clangd")
+vim.lsp.enable("csharp_ls")
+vim.lsp.enable("neocmake")
 vim.lsp.enable("gopls")
+vim.lsp.enable("jdtls")
+vim.lsp.enable("kotlin_lsp")
 vim.lsp.enable("lua_ls")
 vim.lsp.enable("ty")
 vim.lsp.enable("zls")
 vim.lsp.enable("rust_analyzer")
+vim.lsp.enable("hls")
 vim.lsp.enable("ts_ls")
 vim.lsp.enable("tailwindcss")
 vim.lsp.enable("vue_ls")
 vim.lsp.enable("jsonls")
 vim.lsp.enable("texlab")
+vim.lsp.enable("marksman")
 -- lualine
 require("lualine").setup({})
 -- luasnip
@@ -439,6 +416,7 @@ require("neogit").setup({
 	disable_context_highlighting = true,
 })
 vim.keymap.set("n", "<leader>gg", "<cmd>Neogit<cr>", { desc = "[G]it wrapper neo[G]it" })
+vim.keymap.set("n", "<leader>gG", "<cmd>Neogit cwd=%:p:h<cr>", { desc = "Show Neogit UI (current buffer dir)" })
 -- noice
 require("noice").setup({
 	lsp = {
@@ -447,17 +425,12 @@ require("noice").setup({
 			["vim.lsp.util.stylize_markdown"] = true,
 		},
 	},
-	routes = {
-		{
-			filter = {
-				event = "notify",
-				find = "W325: Ignoring swapfile",
-			},
-			opts = { skip = true },
-		},
+	presets = {
+		long_message_to_split = true, -- long messages will be sent to a split
+		lsp_doc_border = true
 	},
 })
--- notify-render
+-- notify
 require("notify").setup({
 	merge_duplicates = true,
 	background_colour = "#00000000",
@@ -535,18 +508,21 @@ vim.keymap.set({ "n", "x", "o" }, "[a", function()
 end)
 
 -- treesitter
-local treesitter_parsers = {
+require("nvim-treesitter").install({
 	"html",
 	"javascript",
 	"typescript",
 	"vue",
 	"rust",
 	"zig",
-	"haskell",
 	"cmake",
 	"cpp",
 	"c",
+	"c_sharp",
 	"cmake",
+	"glsl",
+	"java",
+	"kotlin",
 	"lua",
 	"python",
 	"go",
@@ -556,14 +532,11 @@ local treesitter_parsers = {
 	"nix",
 	"markdown",
 	"markdown_inline",
+	"latex",
 	"vim",
 	"vimdoc",
 	"query",
-}
-
-vim.api.nvim_create_user_command("TSInstallConfigured", function()
-	require("nvim-treesitter").install(treesitter_parsers)
-end, { desc = "Install configured Tree-sitter parsers" })
+})
 
 vim.api.nvim_create_autocmd("FileType", {
 	callback = function(args)
@@ -609,12 +582,7 @@ require("oil").setup({
 vim.keymap.set("n", "-", "<cmd>Oil<cr>", { desc = "Open parent directory" })
 -- oil-git-status
 require("oil-git-status").setup({})
-
 -- todo-comments
 require("todo-comments").setup({})
--- vimtex
-vim.g.vimtex_view_method = "zathura"
 -- which-key
-vim.keymap.set("n", "<leader>?", function()
-	require("which-key").show({ global = false })
-end, { desc = "Buffer Local Keymaps" })
+require("which-key").setup()
