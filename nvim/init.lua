@@ -146,9 +146,9 @@ vim.api.nvim_create_autocmd("TextYankPost", {
 local gh = function(repo)
 	return "https://github.com/" .. repo
 end
--- local cb = function(repo)
--- 	return "https://codeberg.org/" .. repo
--- end
+local cb = function(repo)
+	return "https://codeberg.org/" .. repo
+end
 
 local plugins = {
 	-- colorscheme
@@ -189,6 +189,10 @@ local plugins = {
 	gh("folke/todo-comments.nvim"),
 	gh("xiyaowong/transparent.nvim"),
 	gh("folke/which-key.nvim"),
+	gh("Julian/lean.nvim"),
+	gh("kawre/leetcode.nvim"),
+	cb("mfussenegger/nvim-dap"),
+	gh("theHamsta/nvim-dap-virtual-text"),
 }
 
 vim.pack.add(plugins)
@@ -251,7 +255,7 @@ require("conform").setup({
 		javascriptreact = { "prettier" },
 		typescriptreact = { "prettier" },
 		vue = { "prettier" },
-		python = { "ruff_format", "ruff_organize_imports" },
+		python = { "ruff_format", "ruff_fix" },
 		go = { "gofumpt", "goimports" },
 		rust = { "rustfmt" },
 		c = { "clang-format" },
@@ -263,6 +267,7 @@ require("conform").setup({
 		html = { "prettier" },
 		css = { "prettier" },
 		json = { "prettier" },
+		jsonc = { "prettier" },
 		yaml = { "prettier" },
 		tex = { "latexindent" },
 		latex = { "latexindent" },
@@ -332,9 +337,13 @@ vim.keymap.set("n", "<leader>sq", fzf_call("quickfix"), { desc = "[S]earch [Q]ui
 vim.keymap.set("n", "<leader>sr", fzf_call("registers"), { desc = "[S]earch [R]egisters" })
 vim.keymap.set("n", "<leader>sa", fzf_call("autocmds"), { desc = "[S]earch [A]utocmds" })
 vim.keymap.set("n", "<leader>sz", fzf_call("zoxide"), { desc = "[S]earch [Z]oxide" })
+vim.keymap.set("n", "<leader>su", fzf_call("undotree"), { desc = "[S]earch [U]ndotree" })
 vim.keymap.set("n", "<leader>uC", fzf_call("colorschemes"), { desc = "[U]I colorschemes" })
 vim.keymap.set("n", "<leader>uc", fzf_call("awesome_colorschemes"), { desc = "[U]I awesome_colorschemes" })
 vim.keymap.set("n", "<leader>gf", fzf_call("git_bcommits"), { desc = "[G]it [F]ile history" })
+vim.keymap.set("n", "<leader>dB", fzf_call("dap_breakpoints"), { desc = "[D]ebug breakpoints" })
+vim.keymap.set("n", "<leader>dv", fzf_call("dap_variables"), { desc = "[D]ebug variables" })
+vim.keymap.set("n", "<leader>df", fzf_call("dap_frames"), { desc = "[D]ebug frames" })
 
 -- nvim-autopairs
 require("nvim-autopairs").setup()
@@ -375,10 +384,26 @@ vim.lsp.enable("ts_ls")
 vim.lsp.enable("tailwindcss")
 vim.lsp.enable("vue_ls")
 vim.lsp.enable("jsonls")
+vim.lsp.enable("taplo")
 vim.lsp.enable("texlab")
 vim.lsp.enable("marksman")
+vim.lsp.enable("bashls")
+vim.lsp.enable("nixd")
 -- lualine
-require("lualine").setup({})
+require("lualine").setup({
+	sections = {
+		lualine_x = {
+			{
+				require("noice").api.status.mode.get,
+				cond = require("noice").api.status.mode.has,
+				color = { fg = "#ff9e64" },
+			},
+			{ "encoding" },
+			{ "fileformat" },
+			{ "filetype" },
+		},
+	},
+})
 -- luasnip
 require("luasnip.loaders.from_vscode").lazy_load()
 -- markdown-preview
@@ -427,28 +452,30 @@ require("noice").setup({
 	},
 	presets = {
 		long_message_to_split = true, -- long messages will be sent to a split
-		lsp_doc_border = true
+		lsp_doc_border = true,
 	},
 })
 -- notify
 require("notify").setup({
 	merge_duplicates = true,
-	background_colour = "#00000000",
+	background_colour = "#000000",
 })
 -- linter
 local lint = require("lint")
 lint.linters_by_ft = {
 	dockerfile = { "hadolint" },
 	python = { "ruff" },
-	javascript = { "eslint" },
-	typescript = { "eslint" },
-	javascriptreact = { "eslint" },
-	typescriptreact = { "eslint" },
-	vue = { "eslint" },
+	javascript = { "eslint_d" },
+	typescript = { "eslint_d" },
+	javascriptreact = { "eslint_d" },
+	typescriptreact = { "eslint_d" },
+	vue = { "eslint_d" },
 	sh = { "shellcheck" },
 	bash = { "shellcheck" },
 	zsh = { "shellcheck" },
 	yaml = { "yamllint" },
+	css = { "stylelint" },
+	scss = { "stylelint" },
 }
 
 local lint_augroup = vim.api.nvim_create_augroup("lint", { clear = true })
@@ -518,6 +545,7 @@ require("nvim-treesitter").install({
 	"cmake",
 	"cpp",
 	"c",
+	"asm",
 	"c_sharp",
 	"cmake",
 	"glsl",
@@ -585,4 +613,119 @@ require("oil-git-status").setup({})
 -- todo-comments
 require("todo-comments").setup({})
 -- which-key
-require("which-key").setup()
+local wk = require("which-key")
+wk.setup({})
+wk.add({
+	{ "<leader>d", group = "debug" },
+	{ "<leader>g", group = "git" },
+	{ "<leader>u", group = "ui" },
+	{ "<leader>c", group = "code" },
+	{ "<leader>f", group = "find" },
+	{ "<leader>s", group = "search" },
+	{ "<leader>w", group = "window" },
+})
+
+-- lean
+vim.g.lean_config = { mappings = true }
+-- leetcode
+require("leetcode").setup({
+	cn = {
+		enabled = true,
+	},
+})
+-- nvim-dap
+local dap = require("dap")
+dap.adapters.lldb = {
+	type = "executable",
+	command = "/usr/bin/lldb-dap",
+	name = "lldb",
+}
+dap.adapters.debugpy = {
+	type = "executable",
+	command = "python",
+	args = { "-m", "debugpy.adapter" },
+}
+dap.configurations.cpp = {
+	{
+		name = "Launch",
+		type = "lldb",
+		request = "launch",
+		program = function()
+			return vim.fn.input("Path to executable: ", vim.fn.getcwd() .. "/", "file")
+		end,
+		cwd = "${workspaceFolder}",
+		stopOnEntry = false,
+		args = {},
+	},
+}
+dap.configurations.c = dap.configurations.cpp
+dap.configurations.rust = dap.configurations.cpp
+dap.configurations.python = {
+	{
+		type = "debugpy",
+		request = "launch",
+		name = "Launch file",
+		program = "${file}",
+		pythonPath = function()
+			return "/usr/bin/python"
+		end,
+	},
+}
+
+vim.fn.sign_define("DapBreakpoint", {
+	text = "",
+	texthl = "DapBreakpoint",
+	linehl = "",
+	numhl = "",
+})
+vim.fn.sign_define("DapBreakpointCondition", {
+	text = "",
+	texthl = "DapBreakpointCondition",
+	linehl = "",
+	numhl = "",
+})
+vim.fn.sign_define("DapLogPoint", {
+	text = "",
+	texthl = "DapLogPoint",
+	linehl = "",
+	numhl = "",
+})
+vim.fn.sign_define("DapStopped", {
+	text = "",
+	texthl = "DapStopped",
+	linehl = "Visual",
+	numhl = "DapStopped",
+})
+vim.cmd(
+	[[                                                                                                                                                
+     highlight DapBreakpoint guifg=#f38ba8                                                                                                                   
+     highlight DapBreakpointCondition guifg=#fab387                                                                                                          
+     highlight DapLogPoint guifg=#89b4fa                                                                                                                     
+     highlight DapStopped guifg=#a6e3a1                                                                                                                      
+   ]]
+)
+vim.keymap.set("n", "<F5>", dap.continue, { desc = "continue" })
+vim.keymap.set("n", "<F10>", dap.step_over, { desc = " step over" })
+vim.keymap.set("n", "<F11>", dap.step_into, { desc = " step into" })
+vim.keymap.set("n", "<F12>", dap.step_out, { desc = "step out" })
+vim.keymap.set("n", "<S-F5>", dap.terminate, { desc = "Terminate" })
+vim.keymap.set("n", "<Leader>dc", function()
+	dap.toggle_breakpoint(vim.fn.input("Condition: "))
+end, { desc = "toggle condition breakpoint" })
+vim.keymap.set("n", "<Leader>dC", dap.run_to_cursor, { desc = "Run to Cursor" })
+vim.keymap.set("n", "<Leader>dR", dap.restart_frame, { desc = "Restart Frame" })
+vim.keymap.set("n", "<Leader>db", dap.toggle_breakpoint, { desc = "toggle breakpoint" })
+vim.keymap.set("n", "<Leader>dl", function()
+	dap.set_breakpoint(nil, nil, vim.fn.input("Log point message: "))
+end, { desc = "Log Point" })
+vim.keymap.set("n", "<Leader>dr", dap.repl.open, { desc = "open repl" })
+
+local widgets = require("dap.ui.widgets")
+vim.keymap.set({ "n", "v" }, "<Leader>dp", widgets.preview, { desc = "preview" })
+vim.keymap.set("n", "<Leader>dt", function()
+	widgets.centered_float(widgets.threads)
+end, { desc = "threads" })
+
+require("nvim-dap-virtual-text").setup({
+	virt_text_pos = "eol",
+})
