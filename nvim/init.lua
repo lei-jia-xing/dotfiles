@@ -69,7 +69,7 @@ vim.keymap.set("n", "[w", function()
 	vim.diagnostic.jump({ count = -1, severity = vim.diagnostic.severity.WARN })
 end, { desc = "Previous [W]arning" })
 
-vim.keymap.set("n", "<C-/>", "<cmd>terminal<cr>", { desc = "Enter terminal mode" })
+-- vim.keymap.set("n", "<C-/>", "<cmd>terminal<cr>", { desc = "Enter terminal mode" })
 vim.keymap.set("t", "<Esc><Esc>", "<C-\\><C-n>", { desc = "Exit terminal mode" })
 vim.keymap.set("n", "<C-h>", "<C-w><C-h>", { desc = "Move focus to the left window" })
 vim.keymap.set("n", "<C-l>", "<C-w><C-l>", { desc = "Move focus to the right window" })
@@ -193,6 +193,7 @@ local plugins = {
 	gh("kawre/leetcode.nvim"),
 	cb("mfussenegger/nvim-dap"),
 	gh("theHamsta/nvim-dap-virtual-text"),
+	gh("akinsho/toggleterm.nvim"),
 }
 
 vim.pack.add(plugins)
@@ -308,7 +309,7 @@ end
 
 vim.keymap.set("n", "<leader>ff", fzf_call("files"), { desc = "Find [F]iles" })
 vim.keymap.set("n", "<leader>fb", fzf_call("buffers"), { desc = "Find [B]uffers" })
-vim.keymap.set("n", "<leader>ft", fzf_call("tabs"), { desc = "Find [T]abs" })
+vim.keymap.set("n", "<leader>f<Tab>", fzf_call("tabs"), { desc = "Find [T]abs" })
 vim.keymap.set("n", "<leader>fc", function()
 	require("fzf-lua").files({ cwd = vim.fn.stdpath("config") })
 end, { desc = "Find [C]onfig files" })
@@ -458,7 +459,7 @@ require("noice").setup({
 -- notify
 require("notify").setup({
 	merge_duplicates = true,
-	background_colour = "#000000",
+	background_colour = "#00000000",
 })
 -- linter
 local lint = require("lint")
@@ -710,7 +711,7 @@ vim.keymap.set("n", "<F11>", dap.step_into, { desc = " step into" })
 vim.keymap.set("n", "<F12>", dap.step_out, { desc = "step out" })
 vim.keymap.set("n", "<S-F5>", dap.terminate, { desc = "Terminate" })
 vim.keymap.set("n", "<Leader>dc", function()
-	dap.toggle_breakpoint(vim.fn.input("Condition: "))
+	dap.create_breakpoint(vim.fn.input("Condition: "))
 end, { desc = "toggle condition breakpoint" })
 vim.keymap.set("n", "<Leader>dC", dap.run_to_cursor, { desc = "Run to Cursor" })
 vim.keymap.set("n", "<Leader>dR", dap.restart_frame, { desc = "Restart Frame" })
@@ -728,4 +729,11 @@ end, { desc = "threads" })
 
 require("nvim-dap-virtual-text").setup({
 	virt_text_pos = "eol",
+})
+require("toggleterm").setup({
+	open_mapping = [[<C-/>]],
+	direction = "float",
+	float_opts = {
+		border = "curved",
+	},
 })
