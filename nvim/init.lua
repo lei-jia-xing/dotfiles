@@ -1,4 +1,7 @@
 vim.loader.enable()
+vim.g.loaded_python3_provider = 0
+vim.g.loaded_perl_provider = 0
+vim.g.loaded_ruby_provider = 0
 vim.opt.number = true
 vim.opt.relativenumber = true
 vim.opt.undofile = true
@@ -92,7 +95,7 @@ vim.api.nvim_create_autocmd("LspAttach", {
 		end
 
 		if client:supports_method(vim.lsp.protocol.Methods.textDocument_inlayHint) then
-			vim.lsp.inlay_hint.enable(true, { bufnr = args.buf })
+			vim.lsp.inlay_hint.enable(false, { bufnr = args.buf })
 			vim.keymap.set("n", "<leader>uh", function()
 				local enabled = vim.lsp.inlay_hint.is_enabled({ bufnr = args.buf })
 				vim.lsp.inlay_hint.enable(not enabled, { bufnr = args.buf })
@@ -194,6 +197,7 @@ local plugins = {
 	cb("mfussenegger/nvim-dap"),
 	gh("theHamsta/nvim-dap-virtual-text"),
 	gh("akinsho/toggleterm.nvim"),
+	gh("folke/trouble.nvim"),
 }
 
 vim.pack.add(plugins)
@@ -324,10 +328,8 @@ vim.keymap.set("n", "<leader>st", "<cmd>TodoFzfLua<cr>", { desc = "[S]earch [T]o
 vim.keymap.set("n", "<leader>n", "<cmd>NoiceFzf<cr>", { desc = "[N]oice history" })
 vim.keymap.set("n", "<leader>so", fzf_call("nvim_options"), { desc = "[S]earch neovim [O]ption" })
 vim.keymap.set("n", "<leader>su", fzf_call("undotree"), { desc = "[S]earch [U]ndotree" })
-vim.keymap.set("n", "<leader>sh", fzf_call("helptags"), { desc = "Find [H]elp tags" })
+vim.keymap.set("n", "<leader>sh", fzf_call("helptags"), { desc = "[S]earch [H]elp tags" })
 vim.keymap.set("n", "<leader>sH", fzf_call("highlights"), { desc = "[S]earch [H]ighlights" })
-vim.keymap.set("n", "<leader>sc", fzf_call("command_history"), { desc = "[S]earch [C]ommand history" })
-vim.keymap.set("n", "<leader>sC", fzf_call("commands"), { desc = "[S]earch [C]ommands" })
 vim.keymap.set("n", "<leader>sg", fzf_call("live_grep_native"), { desc = "[S]earch Live [G]rep" })
 vim.keymap.set("n", "<leader>sk", fzf_call("keymaps"), { desc = "[S]earch [K]eymaps" })
 vim.keymap.set("n", "<leader>ss", fzf_call("lsp_document_symbols"), { desc = "[S]earch document [S]ymbols" })
@@ -338,7 +340,6 @@ vim.keymap.set("n", "<leader>sq", fzf_call("quickfix"), { desc = "[S]earch [Q]ui
 vim.keymap.set("n", "<leader>sr", fzf_call("registers"), { desc = "[S]earch [R]egisters" })
 vim.keymap.set("n", "<leader>sa", fzf_call("autocmds"), { desc = "[S]earch [A]utocmds" })
 vim.keymap.set("n", "<leader>sz", fzf_call("zoxide"), { desc = "[S]earch [Z]oxide" })
-vim.keymap.set("n", "<leader>su", fzf_call("undotree"), { desc = "[S]earch [U]ndotree" })
 vim.keymap.set("n", "<leader>uC", fzf_call("colorschemes"), { desc = "[U]I colorschemes" })
 vim.keymap.set("n", "<leader>uc", fzf_call("awesome_colorschemes"), { desc = "[U]I awesome_colorschemes" })
 vim.keymap.set("n", "<leader>gf", fzf_call("git_bcommits"), { desc = "[G]it [F]ile history" })
@@ -390,25 +391,20 @@ vim.lsp.enable("texlab")
 vim.lsp.enable("marksman")
 vim.lsp.enable("bashls")
 vim.lsp.enable("nixd")
--- lualine
-require("lualine").setup({
-	sections = {
-		lualine_x = {
-			{
-				require("noice").api.status.mode.get,
-				cond = require("noice").api.status.mode.has,
-				color = { fg = "#ff9e64" },
-			},
-			{ "encoding" },
-			{ "fileformat" },
-			{ "filetype" },
-		},
-	},
-})
 -- luasnip
 require("luasnip.loaders.from_vscode").lazy_load()
 -- markdown-preview
-vim.keymap.set("n", "<leader>cp", "<cmd>MarkdownPreviewToggle<cr>", { desc = "Markdown Preview" })
+vim.api.nvim_create_autocmd("FileType", {
+	pattern = "markdown",
+	callback = function()
+		vim.keymap.set(
+			"n",
+			"<leader>cp",
+			"<cmd>MarkdownPreviewToggle<cr>",
+			{ desc = "Markdown Preview", buffer = true }
+		)
+	end,
+})
 -- mini.ai
 require("mini.ai").setup({
 	custom_textobjects = {
@@ -458,7 +454,6 @@ require("noice").setup({
 })
 -- notify
 require("notify").setup({
-	merge_duplicates = true,
 	background_colour = "#00000000",
 })
 -- linter
@@ -543,7 +538,7 @@ require("nvim-treesitter").install({
 	"vue",
 	"rust",
 	"zig",
-	"cmake",
+	"make",
 	"cpp",
 	"c",
 	"asm",
@@ -555,6 +550,7 @@ require("nvim-treesitter").install({
 	"lua",
 	"python",
 	"go",
+	"haskell",
 	"dockerfile",
 	"bash",
 	"fish",
@@ -562,9 +558,18 @@ require("nvim-treesitter").install({
 	"markdown",
 	"markdown_inline",
 	"latex",
+	"bibtex",
 	"vim",
 	"vimdoc",
 	"query",
+	"ini",
+	"toml",
+	"yaml",
+	"requirements",
+	"json",
+	"css",
+	"scss",
+	"sql",
 })
 
 vim.api.nvim_create_autocmd("FileType", {
@@ -624,6 +629,7 @@ wk.add({
 	{ "<leader>f", group = "find" },
 	{ "<leader>s", group = "search" },
 	{ "<leader>w", group = "window" },
+	{ "<leader>q", group = "quickfix" },
 })
 
 -- lean
@@ -645,6 +651,11 @@ dap.adapters.debugpy = {
 	type = "executable",
 	command = "python",
 	args = { "-m", "debugpy.adapter" },
+}
+dap.adapters.go = {
+	type = "executable",
+	command = "dlv",
+	args = { "dap" },
 }
 dap.configurations.cpp = {
 	{
@@ -670,6 +681,14 @@ dap.configurations.python = {
 		pythonPath = function()
 			return "/usr/bin/python"
 		end,
+	},
+}
+dap.configurations.go = {
+	{
+		name = "Launch",
+		type = "go",
+		request = "launch",
+		program = "${file}",
 	},
 }
 
@@ -735,5 +754,66 @@ require("toggleterm").setup({
 	direction = "float",
 	float_opts = {
 		border = "curved",
+	},
+})
+
+-- trouble
+require("trouble").setup({})
+-- fzf-lua integration
+local fzfluaConfig = require("fzf-lua.config")
+local actions = require("trouble.sources.fzf").actions
+fzfluaConfig.defaults.actions.files["ctrl-t"] = actions.open
+-- lualine integtation
+local symbols = require("trouble").statusline({
+	mode = "lsp_document_symbols",
+	groups = {},
+	title = false,
+	filter = { range = true },
+	format = "{kind_icon}{symbol.name:Normal}",
+	-- The following line is needed to fix the background color
+	-- Set it to the lualine section you want to use
+	hl_group = "lualine_c_normal",
+})
+
+vim.keymap.set("n", "<leader>xx", function()
+	require("trouble").toggle("diagnostics")
+end, { desc = "Workspace Diagnostics (Trouble)" })
+
+vim.keymap.set("n", "<leader>xX", function()
+	require("trouble").toggle({ mode = "diagnostics", filter = { buf = 0 } })
+end, { desc = "Buffer Diagnostics (Trouble)" })
+
+vim.keymap.set("n", "<leader>xq", function()
+	require("trouble").toggle("qflist")
+end, { desc = "Quickfix List" })
+
+vim.keymap.set("n", "<leader>xt", "<cmd>TodoTrouble<cr>", { desc = "Quickfix TODO List" })
+
+vim.keymap.set("n", "<leader>cs", function()
+	require("trouble").toggle({ mode = "symbols", focus = false })
+end, { desc = "[C]ode [S]ymbols" })
+
+-- lualine
+require("lualine").setup({
+	sections = {
+		lualine_c = {
+			{
+				"filename",
+			},
+			{
+				symbols.get,
+				cond = symbols.has,
+			},
+		},
+		lualine_x = {
+			{
+				require("noice").api.status.mode.get,
+				cond = require("noice").api.status.mode.has,
+				color = { fg = "#ff9e64" },
+			},
+			{ "encoding" },
+			{ "fileformat" },
+			{ "filetype" },
+		},
 	},
 })
