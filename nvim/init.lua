@@ -55,6 +55,9 @@ vim.diagnostic.config({
 	},
 	signs = false,
 })
+vim.keymap.set("n", "<leader>ud", function()
+	vim.diagnostic.enable(not vim.diagnostic.is_enabled())
+end, { desc = "Toggle [D]iagnostics" })
 
 vim.keymap.set("n", "<leader>cd", vim.diagnostic.open_float, { desc = "Show [Code] line [D]iagnostic" })
 
@@ -175,7 +178,6 @@ local plugins = {
 	gh("L3MON4D3/LuaSnip"),
 	gh("iamcco/markdown-preview.nvim"),
 	gh("MeanderingProgrammer/render-markdown.nvim"),
-	gh("nvim-mini/mini.ai"),
 	gh("nvim-mini/mini.hipatterns"),
 	gh("nvim-mini/mini.move"),
 	gh("NeogitOrg/neogit"),
@@ -205,6 +207,7 @@ vim.pack.add(plugins)
 -- update all the plugins
 vim.api.nvim_create_user_command("PackUpdate", function()
 	vim.pack.update()
+	pcall(vim.cmd.TSUpdate)
 end, { desc = "Update all the plugin installed" })
 
 -- uninstall plugin
@@ -325,7 +328,6 @@ vim.keymap.set("n", "<leader>ca", fzf_call("lsp_code_actions"), { desc = "LSP [C
 vim.keymap.set("n", "<leader>sm", fzf_call("marks"), { desc = "[S]earch [M]arks" })
 vim.keymap.set("n", "<leader>sM", fzf_call("manpages"), { desc = "[S]earch [M]anpages" })
 vim.keymap.set("n", "<leader>st", "<cmd>TodoFzfLua<cr>", { desc = "[S]earch [T]odo" })
-vim.keymap.set("n", "<leader>n", "<cmd>NoiceFzf<cr>", { desc = "[N]oice history" })
 vim.keymap.set("n", "<leader>so", fzf_call("nvim_options"), { desc = "[S]earch neovim [O]ption" })
 vim.keymap.set("n", "<leader>su", fzf_call("undotree"), { desc = "[S]earch [U]ndotree" })
 vim.keymap.set("n", "<leader>sh", fzf_call("helptags"), { desc = "[S]earch [H]elp tags" })
@@ -343,7 +345,7 @@ vim.keymap.set("n", "<leader>sz", fzf_call("zoxide"), { desc = "[S]earch [Z]oxid
 vim.keymap.set("n", "<leader>uC", fzf_call("colorschemes"), { desc = "[U]I colorschemes" })
 vim.keymap.set("n", "<leader>uc", fzf_call("awesome_colorschemes"), { desc = "[U]I awesome_colorschemes" })
 vim.keymap.set("n", "<leader>gf", fzf_call("git_bcommits"), { desc = "[G]it [F]ile history" })
-vim.keymap.set("n", "<leader>dB", fzf_call("dap_breakpoints"), { desc = "[D]ebug breakpoints" })
+vim.keymap.set("n", "<leader>sb", fzf_call("dap_breakpoints"), { desc = "[S]earch breakpoints" })
 vim.keymap.set("n", "<leader>dv", fzf_call("dap_variables"), { desc = "[D]ebug variables" })
 vim.keymap.set("n", "<leader>df", fzf_call("dap_frames"), { desc = "[D]ebug frames" })
 
@@ -404,20 +406,6 @@ vim.api.nvim_create_autocmd("FileType", {
 			{ desc = "Markdown Preview", buffer = true }
 		)
 	end,
-})
--- mini.ai
-require("mini.ai").setup({
-	custom_textobjects = {
-		-- Whole buffer
-		g = function()
-			local from = { line = 1, col = 1 }
-			local to = {
-				line = vim.fn.line("$"),
-				col = math.max(vim.fn.getline("$"):len(), 1),
-			}
-			return { from = from, to = to }
-		end,
-	},
 })
 -- mini.hipatterns
 local hipatterns = require("mini.hipatterns")
@@ -535,6 +523,7 @@ require("nvim-treesitter").install({
 	"html",
 	"javascript",
 	"typescript",
+	"tsx",
 	"vue",
 	"rust",
 	"zig",
@@ -653,9 +642,12 @@ dap.adapters.debugpy = {
 	args = { "-m", "debugpy.adapter" },
 }
 dap.adapters.go = {
-	type = "executable",
-	command = "dlv",
-	args = { "dap" },
+	type = "server",
+	port = "${port}",
+	executable = {
+		command = "dlv",
+		args = { "dap", "-l", "127.0.0.1:${port}" },
+	},
 }
 dap.configurations.cpp = {
 	{
@@ -741,7 +733,6 @@ end, { desc = "Log Point" })
 vim.keymap.set("n", "<Leader>dr", dap.repl.open, { desc = "open repl" })
 
 local widgets = require("dap.ui.widgets")
-vim.keymap.set({ "n", "v" }, "<Leader>dp", widgets.preview, { desc = "preview" })
 vim.keymap.set("n", "<Leader>dt", function()
 	widgets.centered_float(widgets.threads)
 end, { desc = "threads" })
@@ -759,6 +750,20 @@ require("toggleterm").setup({
 
 -- trouble
 require("trouble").setup({})
+-- quickfix native support
+vim.cmd.packadd("cfilter")
+vim.keymap.set("n", "]q", function()
+	pcall(vim.cmd.cnext)
+end, { desc = "Next [Q]uickfix item" })
+vim.keymap.set("n", "[q", function()
+	pcall(vim.cmd.cprev)
+end, { desc = "Previous [Q]uickfix item" })
+vim.keymap.set("n", "]Q", function()
+	pcall(vim.cmd.cnfile)
+end, { desc = "Next [Q]uickfix file" })
+vim.keymap.set("n", "[Q", function()
+	pcall(vim.cmd.cpfile)
+end, { desc = "Previous [Q]uickfix file" })
 -- fzf-lua integration
 local fzfluaConfig = require("fzf-lua.config")
 local actions = require("trouble.sources.fzf").actions
