@@ -104,40 +104,6 @@ vim.api.nvim_create_autocmd("LspAttach", {
 				vim.lsp.inlay_hint.enable(not enabled, { bufnr = args.buf })
 			end, { buffer = args.buf, desc = "Toggle inlay [H]ints" })
 		end
-
-		if client:supports_method(vim.lsp.protocol.Methods.textDocument_codeLens) then
-			vim.lsp.codelens.enable(false, { bufnr = args.buf })
-			vim.keymap.set("n", "<leader>cl", vim.lsp.codelens.run, {
-				buffer = args.buf,
-				desc = "[C]ode [L]ens run",
-			})
-			vim.keymap.set("n", "<leader>uL", function()
-				local enabled = vim.lsp.codelens.is_enabled({ bufnr = args.buf })
-				vim.lsp.codelens.enable(not enabled, { bufnr = args.buf })
-			end, { buffer = args.buf, desc = "Toggle Code[L]ens" })
-		end
-
-		if client:supports_method(vim.lsp.protocol.Methods.textDocument_documentHighlight) then
-			local highlight_group = vim.api.nvim_create_augroup("lsp-highlight-" .. args.buf, { clear = true })
-			vim.api.nvim_create_autocmd({ "CursorHold", "CursorHoldI" }, {
-				group = highlight_group,
-				buffer = args.buf,
-				callback = vim.lsp.buf.document_highlight,
-			})
-			vim.api.nvim_create_autocmd({ "CursorMoved", "CursorMovedI" }, {
-				group = highlight_group,
-				buffer = args.buf,
-				callback = vim.lsp.buf.clear_references,
-			})
-			vim.api.nvim_create_autocmd("LspDetach", {
-				group = highlight_group,
-				buffer = args.buf,
-				callback = function()
-					vim.lsp.buf.clear_references()
-					vim.api.nvim_clear_autocmds({ group = highlight_group, buffer = args.buf })
-				end,
-			})
-		end
 	end,
 })
 
@@ -164,7 +130,6 @@ local plugins = {
 	gh("MunifTanjim/nui.nvim"),
 	gh("nvim-lua/plenary.nvim"),
 	gh("ibhagwan/fzf-lua"),
-	gh("windwp/nvim-autopairs"),
 	gh("lukas-reineke/indent-blankline.nvim"),
 	gh("saghen/blink.cmp"),
 	gh("numToStr/Comment.nvim"),
@@ -197,6 +162,9 @@ local plugins = {
 	gh("Julian/lean.nvim"),
 	gh("kawre/leetcode.nvim"),
 	cb("mfussenegger/nvim-dap"),
+	cb("mfussenegger/nvim-jdtls"),
+	gh("mfussenegger/nvim-dap-python"),
+	gh("leoluz/nvim-dap-go"),
 	gh("theHamsta/nvim-dap-virtual-text"),
 	gh("akinsho/toggleterm.nvim"),
 	gh("folke/trouble.nvim"),
@@ -349,8 +317,6 @@ vim.keymap.set("n", "<leader>sb", fzf_call("dap_breakpoints"), { desc = "[S]earc
 vim.keymap.set("n", "<leader>dv", fzf_call("dap_variables"), { desc = "[D]ebug variables" })
 vim.keymap.set("n", "<leader>df", fzf_call("dap_frames"), { desc = "[D]ebug frames" })
 
--- nvim-autopairs
-require("nvim-autopairs").setup()
 -- indent-blankline
 require("ibl").setup()
 -- nvim-surround
@@ -636,19 +602,6 @@ dap.adapters.lldb = {
 	command = "/usr/bin/lldb-dap",
 	name = "lldb",
 }
-dap.adapters.debugpy = {
-	type = "executable",
-	command = "python",
-	args = { "-m", "debugpy.adapter" },
-}
-dap.adapters.go = {
-	type = "server",
-	port = "${port}",
-	executable = {
-		command = "dlv",
-		args = { "dap", "-l", "127.0.0.1:${port}" },
-	},
-}
 dap.configurations.cpp = {
 	{
 		name = "Launch",
@@ -664,25 +617,28 @@ dap.configurations.cpp = {
 }
 dap.configurations.c = dap.configurations.cpp
 dap.configurations.rust = dap.configurations.cpp
-dap.configurations.python = {
-	{
-		type = "debugpy",
-		request = "launch",
-		name = "Launch file",
-		program = "${file}",
-		pythonPath = function()
-			return "/usr/bin/python"
-		end,
-	},
-}
-dap.configurations.go = {
-	{
-		name = "Launch",
-		type = "go",
-		request = "launch",
-		program = "${file}",
-	},
-}
+require("dap-go").setup()
+require("dap-python").setup("python3")
+vim.api.nvim_create_user_command("DapTest", function()
+	local ft = vim.bo.filetype
+	if ft == "go" then
+		require("dap-go").debug_test()
+	elseif ft == "python" then
+		require("dap-python").test_method()
+	elseif ft == "java" then
+		require("jdtls").test_nearest_method()
+	end
+end, { desc = "Debug nearest test" })
+
+vim.api.nvim_create_user_command("DapTestClass", function()
+	local ft = vim.bo.filetype
+	if ft == "python" then
+		require("dap-python").test_class()
+	elseif ft == "java" then
+		require("jdtls").test_class()
+	end
+end, { desc = "Debug nearest test class" })
+
 
 vim.fn.sign_define("DapBreakpoint", {
 	text = "",
@@ -724,13 +680,14 @@ vim.keymap.set("n", "<S-F5>", dap.terminate, { desc = "Terminate" })
 vim.keymap.set("n", "<Leader>dc", function()
 	dap.create_breakpoint(vim.fn.input("Condition: "))
 end, { desc = "toggle condition breakpoint" })
-vim.keymap.set("n", "<Leader>dC", dap.run_to_cursor, { desc = "Run to Cursor" })
 vim.keymap.set("n", "<Leader>dR", dap.restart_frame, { desc = "Restart Frame" })
 vim.keymap.set("n", "<Leader>db", dap.toggle_breakpoint, { desc = "toggle breakpoint" })
 vim.keymap.set("n", "<Leader>dl", function()
 	dap.set_breakpoint(nil, nil, vim.fn.input("Log point message: "))
 end, { desc = "Log Point" })
 vim.keymap.set("n", "<Leader>dr", dap.repl.open, { desc = "open repl" })
+vim.keymap.set("n", "<Leader>dT", "<cmd>DapTest<cr>", { desc = "Debug [T]est" })
+vim.keymap.set("n", "<Leader>dC", "<cmd>DapTestClass<cr>", { desc = "Debug test [C]lass" })
 
 local widgets = require("dap.ui.widgets")
 vim.keymap.set("n", "<Leader>dt", function()
