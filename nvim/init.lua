@@ -132,7 +132,6 @@ local plugins = {
 	gh("ibhagwan/fzf-lua"),
 	gh("lukas-reineke/indent-blankline.nvim"),
 	gh("saghen/blink.cmp"),
-	gh("numToStr/Comment.nvim"),
 	gh("stevearc/conform.nvim"),
 	gh("lewis6991/gitsigns.nvim"),
 	gh("nmac427/guess-indent.nvim"),
@@ -153,7 +152,6 @@ local plugins = {
 	gh("kylechui/nvim-surround"),
 	gh("nvim-treesitter/nvim-treesitter-textobjects"),
 	gh("nvim-treesitter/nvim-treesitter"),
-	gh("windwp/nvim-ts-autotag"),
 	gh("stevearc/oil.nvim"),
 	gh("refractalize/oil-git-status.nvim"),
 	gh("folke/todo-comments.nvim"),
@@ -551,8 +549,6 @@ vim.api.nvim_create_autocmd("FileType", {
 		-- vim.bo.indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
 	end,
 })
--- nvim-ts-autotag
-require("nvim-ts-autotag").setup()
 -- oil
 require("oil").setup({
 	columns = {
