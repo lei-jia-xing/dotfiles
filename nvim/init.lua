@@ -152,6 +152,7 @@ local plugins = {
 	gh("kylechui/nvim-surround"),
 	gh("nvim-treesitter/nvim-treesitter-textobjects"),
 	gh("nvim-treesitter/nvim-treesitter"),
+	gh("windwp/nvim-autopairs"),
 	gh("stevearc/oil.nvim"),
 	gh("refractalize/oil-git-status.nvim"),
 	gh("folke/todo-comments.nvim"),
@@ -315,6 +316,7 @@ vim.keymap.set("n", "<leader>sb", fzf_call("dap_breakpoints"), { desc = "[S]earc
 vim.keymap.set("n", "<leader>dv", fzf_call("dap_variables"), { desc = "[D]ebug variables" })
 vim.keymap.set("n", "<leader>df", fzf_call("dap_frames"), { desc = "[D]ebug frames" })
 
+require("nvim-autopairs").setup()
 -- indent-blankline
 require("ibl").setup()
 -- nvim-surround
