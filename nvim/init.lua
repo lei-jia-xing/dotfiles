@@ -67,13 +67,24 @@ end, { desc = "Next [E]rror" })
 vim.keymap.set("n", "[e", function()
 	vim.diagnostic.jump({ count = -1, severity = vim.diagnostic.severity.ERROR })
 end, { desc = "Previous [E]rror" })
-
 vim.keymap.set("n", "]w", function()
 	vim.diagnostic.jump({ count = 1, severity = vim.diagnostic.severity.WARN })
 end, { desc = "Next [W]arning" })
 vim.keymap.set("n", "[w", function()
 	vim.diagnostic.jump({ count = -1, severity = vim.diagnostic.severity.WARN })
 end, { desc = "Previous [W]arning" })
+vim.keymap.set("n", "]i", function()
+	vim.diagnostic.jump({ count = 1, severity = vim.diagnostic.severity.INFO })
+end, { desc = "Next [I]nfo" })
+vim.keymap.set("n", "[i", function()
+	vim.diagnostic.jump({ count = -1, severity = vim.diagnostic.severity.INFO })
+end, { desc = "Previous [I]nfo" })
+vim.keymap.set("n", "]h", function()
+	vim.diagnostic.jump({ count = 1, severity = vim.diagnostic.severity.HINT })
+end, { desc = "Next [H]int" })
+vim.keymap.set("n", "[h", function()
+	vim.diagnostic.jump({ count = -1, severity = vim.diagnostic.severity.HINT })
+end, { desc = "Previous [H]int" })
 
 -- vim.keymap.set("n", "<C-/>", "<cmd>terminal<cr>", { desc = "Enter terminal mode" })
 vim.keymap.set("t", "<Esc><Esc>", "<C-\\><C-n>", { desc = "Exit terminal mode" })
@@ -163,6 +174,7 @@ local plugins = {
 	cb("mfussenegger/nvim-dap"),
 	cb("mfussenegger/nvim-jdtls"),
 	gh("mfussenegger/nvim-dap-python"),
+	gh("mrcjkb/haskell-tools.nvim"),
 	gh("leoluz/nvim-dap-go"),
 	gh("theHamsta/nvim-dap-virtual-text"),
 	gh("akinsho/toggleterm.nvim"),
@@ -235,7 +247,6 @@ require("conform").setup({
 		rust = { "rustfmt" },
 		c = { "clang-format" },
 		cpp = { "clang-format" },
-		kotlin = { "ktlint" },
 		sh = { "shfmt" },
 		bash = { "shfmt" },
 		zsh = { "shfmt" },
@@ -269,6 +280,9 @@ vim.keymap.del("n", "grt")
 vim.keymap.del("n", "gri")
 vim.keymap.set("n", "<leader>cr", vim.lsp.buf.rename, {
 	desc = "[C]ode [R]ename",
+})
+vim.keymap.set("n", "<leader>cl", vim.lsp.codelens.run, {
+	desc = "[C]ode [L]ens",
 })
 -- fzf-lua
 require("fzf-lua").setup({
@@ -323,10 +337,10 @@ require("ibl").setup()
 require("nvim-surround").setup()
 -- gitsigns
 local gs = require("gitsigns")
-vim.keymap.set("n", "]h", function()
+vim.keymap.set("n", "]H", function()
 	gs.nav_hunk("next")
 end, { desc = "Next [H]unk" })
-vim.keymap.set("n", "[h", function()
+vim.keymap.set("n", "[H", function()
 	gs.nav_hunk("prev")
 end, { desc = "Previous [H]unk" })
 vim.keymap.set("n", "<leader>gb", function()
@@ -344,12 +358,10 @@ vim.lsp.enable("csharp_ls")
 vim.lsp.enable("neocmake")
 vim.lsp.enable("gopls")
 vim.lsp.enable("jdtls")
-vim.lsp.enable("kotlin_lsp")
 vim.lsp.enable("lua_ls")
 vim.lsp.enable("ty")
 vim.lsp.enable("zls")
 vim.lsp.enable("rust_analyzer")
-vim.lsp.enable("hls")
 vim.lsp.enable("ts_ls")
 vim.lsp.enable("tailwindcss")
 vim.lsp.enable("vue_ls")
@@ -501,11 +513,9 @@ require("nvim-treesitter").install({
 	"cmake",
 	"glsl",
 	"java",
-	"kotlin",
 	"lua",
 	"python",
 	"go",
-	"haskell",
 	"dockerfile",
 	"bash",
 	"fish",
@@ -617,25 +627,6 @@ dap.configurations.c = dap.configurations.cpp
 dap.configurations.rust = dap.configurations.cpp
 require("dap-go").setup()
 require("dap-python").setup("python3")
-vim.api.nvim_create_user_command("DapTest", function()
-	local ft = vim.bo.filetype
-	if ft == "go" then
-		require("dap-go").debug_test()
-	elseif ft == "python" then
-		require("dap-python").test_method()
-	elseif ft == "java" then
-		require("jdtls").test_nearest_method()
-	end
-end, { desc = "Debug nearest test" })
-
-vim.api.nvim_create_user_command("DapTestClass", function()
-	local ft = vim.bo.filetype
-	if ft == "python" then
-		require("dap-python").test_class()
-	elseif ft == "java" then
-		require("jdtls").test_class()
-	end
-end, { desc = "Debug nearest test class" })
 
 
 vim.fn.sign_define("DapBreakpoint", {
@@ -684,8 +675,6 @@ vim.keymap.set("n", "<Leader>dl", function()
 	dap.set_breakpoint(nil, nil, vim.fn.input("Log point message: "))
 end, { desc = "Log Point" })
 vim.keymap.set("n", "<Leader>dr", dap.repl.open, { desc = "open repl" })
-vim.keymap.set("n", "<Leader>dT", "<cmd>DapTest<cr>", { desc = "Debug [T]est" })
-vim.keymap.set("n", "<Leader>dC", "<cmd>DapTestClass<cr>", { desc = "Debug test [C]lass" })
 
 local widgets = require("dap.ui.widgets")
 vim.keymap.set("n", "<Leader>dt", function()
