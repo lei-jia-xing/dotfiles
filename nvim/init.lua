@@ -520,6 +520,7 @@ require("nvim-treesitter").install({
 	"bash",
 	"fish",
 	"nix",
+	"haskell",
 	"markdown",
 	"markdown_inline",
 	"latex",
@@ -535,6 +536,8 @@ require("nvim-treesitter").install({
 	"css",
 	"scss",
 	"sql",
+}, {
+	generate = true, -- important for those provided parser.c is outdated (e.g., use a no longer supported ABI)
 })
 
 vim.api.nvim_create_autocmd("FileType", {
@@ -627,7 +630,6 @@ dap.configurations.c = dap.configurations.cpp
 dap.configurations.rust = dap.configurations.cpp
 require("dap-go").setup()
 require("dap-python").setup("python3")
-
 
 vim.fn.sign_define("DapBreakpoint", {
 	text = "",
