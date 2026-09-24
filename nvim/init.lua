@@ -88,10 +88,6 @@ end, { desc = "Previous [H]int" })
 
 -- vim.keymap.set("n", "<C-/>", "<cmd>terminal<cr>", { desc = "Enter terminal mode" })
 vim.keymap.set("t", "<Esc><Esc>", "<C-\\><C-n>", { desc = "Exit terminal mode" })
-vim.keymap.set("n", "<C-h>", "<C-w><C-h>", { desc = "Move focus to the left window" })
-vim.keymap.set("n", "<C-l>", "<C-w><C-l>", { desc = "Move focus to the right window" })
-vim.keymap.set("n", "<C-j>", "<C-w><C-j>", { desc = "Move focus to the lower window" })
-vim.keymap.set("n", "<C-k>", "<C-w><C-k>", { desc = "Move focus to the upper window" })
 vim.keymap.set("n", "<M-Up>", "<cmd>resize +2<cr>", { desc = "Increase window height" })
 vim.keymap.set("n", "<M-Down>", "<cmd>resize -2<cr>", { desc = "Decrease window height" })
 vim.keymap.set("n", "<M-Left>", "<cmd>vertical resize -4<cr>", { desc = "Decrease window width" })
@@ -179,6 +175,7 @@ local plugins = {
 	gh("theHamsta/nvim-dap-virtual-text"),
 	gh("akinsho/toggleterm.nvim"),
 	gh("folke/trouble.nvim"),
+	gh("jake-stewart/multicursor.nvim"),
 }
 
 vim.pack.add(plugins)
@@ -523,6 +520,7 @@ require("nvim-treesitter").install({
 	"haskell",
 	"markdown",
 	"markdown_inline",
+	"regex",
 	"latex",
 	"bibtex",
 	"vim",
@@ -595,7 +593,7 @@ wk.add({
 	{ "<leader>f", group = "find" },
 	{ "<leader>s", group = "search" },
 	{ "<leader>w", group = "window" },
-	{ "<leader>q", group = "quickfix" },
+	{ "<leader>x", group = "quickfix" },
 })
 
 -- lean
@@ -768,3 +766,34 @@ require("lualine").setup({
 		},
 	},
 })
+
+-- multicursor
+local mc = require("multicursor-nvim")
+mc.setup()
+
+vim.keymap.set({ "n", "x" }, "<C-n>", function()
+	mc.matchAddCursor(1)
+end, { desc = "Add cursor at next match" })
+vim.keymap.set({ "n", "x" }, "<C-p>", function()
+	mc.matchAddCursor(-1)
+end, { desc = "Add cursor at previous match" })
+vim.keymap.set({ "n", "x" }, "<C-j>", function()
+	mc.lineAddCursor(1)
+end, { desc = "Add cursor at next line" })
+vim.keymap.set({ "n", "x" }, "<C-k>", function()
+	mc.lineAddCursor(-1)
+end, { desc = "Add cursor at previous line" })
+vim.keymap.set({ "n", "x" }, "<C-t>", mc.toggleCursor, { desc = "Toggle cursor" })
+vim.keymap.set({ "n", "x" }, "<C-a>", mc.matchAllAddCursors, { desc = "Toggle cursor" })
+vim.keymap.set({ "n", "x" }, "gC", mc.addCursorOperator, { desc = "Cursors for every line of motion" })
+mc.addKeymapLayer(function(layerSet)
+	layerSet({ "n", "x" }, "<Left>", mc.prevCursor, { desc = "Previous cursor" })
+	layerSet({ "n", "x" }, "<Right>", mc.nextCursor, { desc = "Next cursor" })
+	layerSet("n", "<esc>", function()
+		if not mc.cursorsEnabled() then
+			mc.enableCursors()
+		else
+			mc.clearCursors()
+		end
+	end)
+end)
