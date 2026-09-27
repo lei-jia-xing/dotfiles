@@ -24,6 +24,7 @@ vim.opt.timeoutlen = 300
 vim.opt.wrap = false
 vim.opt.scrolloff = 10
 vim.opt.foldenable = false
+vim.opt.winborder = "rounded"
 
 vim.g.mapleader = " "
 vim.g.maplocalleader = " "
@@ -39,7 +40,7 @@ vim.keymap.set("n", "<Esc>", "<cmd>nohlsearch<CR>")
 vim.diagnostic.config({
 	update_in_insert = false,
 	severity_sort = true,
-	float = { border = "rounded", source = "if_many" },
+	float = { source = "if_many" },
 	underline = { severity = { min = vim.diagnostic.severity.WARN } },
 
 	-- Can switch between these as you prefer
@@ -103,7 +104,8 @@ vim.api.nvim_create_autocmd("LspAttach", {
 		if not client then
 			return
 		end
-
+		-- NOTE: only use treesitter to highlight
+		client.server_capabilities.semanticTokensProvider = nil
 		if client:supports_method(vim.lsp.protocol.Methods.textDocument_inlayHint) then
 			vim.lsp.inlay_hint.enable(false, { bufnr = args.buf })
 			vim.keymap.set("n", "<leader>uh", function()
@@ -200,7 +202,13 @@ vim.api.nvim_create_user_command("PackReinstall", function(opts)
 end, { desc = "Reinstall specfic plugins", nargs = "+", complete = "packadd" })
 
 -- colorscheme
-vim.cmd.colorscheme("catppuccin-mocha")
+require("catppuccin").setup({
+	flavour = "mocha",
+	transparent_background = true,
+	float = { transparent = true, solid = false },
+	auto_integrations = true,
+})
+vim.cmd.colorscheme("catppuccin")
 
 -- blink
 require("blink.cmp").setup({
@@ -416,9 +424,7 @@ require("noice").setup({
 	},
 })
 -- notify
-require("notify").setup({
-	background_colour = "#00000000",
-})
+require("notify").setup({})
 -- linter
 local lint = require("lint")
 lint.linters_by_ft = {
@@ -784,7 +790,7 @@ vim.keymap.set({ "n", "x" }, "<M-k>", function()
 	mc.lineAddCursor(-1)
 end, { desc = "Add cursor at previous line" })
 vim.keymap.set({ "n", "x" }, "<M-t>", mc.toggleCursor, { desc = "Toggle Cursor" })
-vim.keymap.set({ "n", "x" }, "<M-A>", mc.matchAllAddCursors, { desc = "Cursors at all matches" })
+vim.keymap.set({ "n", "x" }, "<M-a>", mc.matchAllAddCursors, { desc = "Cursors at all matches" })
 vim.keymap.set({ "n", "x" }, "gC", mc.addCursorOperator, { desc = "Cursors for every line of motion" })
 mc.addKeymapLayer(function(layerSet)
 	layerSet({ "n", "x" }, "<Left>", mc.prevCursor, { desc = "Previous cursor" })
