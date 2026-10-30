@@ -16,7 +16,6 @@ vim.opt.smartcase = true
 vim.opt.breakindent = true
 vim.opt.signcolumn = "yes"
 vim.opt.list = true
-vim.opt.listchars = { tab = "» ", trail = "·", nbsp = "␣" }
 vim.opt.confirm = true
 vim.opt.cursorline = true
 vim.opt.updatetime = 200
@@ -25,12 +24,12 @@ vim.opt.wrap = false
 vim.opt.scrolloff = 10
 vim.opt.foldenable = false
 vim.opt.winborder = "rounded"
+vim.opt.conceallevel = 2
+vim.opt.concealcursor = "nc"
 
 vim.g.mapleader = " "
 vim.g.maplocalleader = " "
 
-vim.opt.mouse = "a"
-vim.opt.showmode = false
 
 vim.schedule(function()
 	vim.opt.clipboard = "unnamedplus"
@@ -43,7 +42,6 @@ vim.diagnostic.config({
 	float = { source = "if_many" },
 	underline = { severity = { min = vim.diagnostic.severity.WARN } },
 
-	-- Can switch between these as you prefer
 	virtual_text = true, -- Text shows up at the end of the line
 	virtual_lines = false, -- Text shows up underneath the line, with virtual lines
 
@@ -87,7 +85,6 @@ vim.keymap.set("n", "[h", function()
 	vim.diagnostic.jump({ count = -1, severity = vim.diagnostic.severity.HINT })
 end, { desc = "Previous [H]int" })
 
--- vim.keymap.set("n", "<C-/>", "<cmd>terminal<cr>", { desc = "Enter terminal mode" })
 vim.keymap.set("t", "<Esc><Esc>", "<C-\\><C-n>", { desc = "Exit terminal mode" })
 vim.keymap.set("n", "<M-Up>", "<cmd>resize +2<cr>", { desc = "Increase window height" })
 vim.keymap.set("n", "<M-Down>", "<cmd>resize -2<cr>", { desc = "Decrease window height" })
@@ -123,7 +120,6 @@ vim.api.nvim_create_autocmd("TextYankPost", {
 	end,
 })
 
--- helper method
 local gh = function(repo)
 	return "https://github.com/" .. repo
 end
@@ -132,14 +128,14 @@ local cb = function(repo)
 end
 
 local plugins = {
-	-- colorscheme
 	gh("catppuccin/nvim"),
 
 	gh("nvim-tree/nvim-web-devicons"),
 	gh("MunifTanjim/nui.nvim"),
 	gh("nvim-lua/plenary.nvim"),
 	gh("ibhagwan/fzf-lua"),
-	gh("lukas-reineke/indent-blankline.nvim"),
+	gh("saghen/blink.indent"),
+	gh("saghen/blink.lib"),
 	gh("saghen/blink.cmp"),
 	gh("stevearc/conform.nvim"),
 	gh("lewis6991/gitsigns.nvim"),
@@ -153,6 +149,7 @@ local plugins = {
 	gh("MeanderingProgrammer/render-markdown.nvim"),
 	gh("nvim-mini/mini.hipatterns"),
 	gh("nvim-mini/mini.move"),
+	gh("nvim-mini/mini.animate"),
 	gh("NeogitOrg/neogit"),
 	gh("sindrets/diffview.nvim"),
 	gh("folke/noice.nvim"),
@@ -178,30 +175,42 @@ local plugins = {
 	gh("akinsho/toggleterm.nvim"),
 	gh("folke/trouble.nvim"),
 	gh("jake-stewart/multicursor.nvim"),
+	gh("nvim-orgmode/orgmode"),
+	gh("nvim-orgmode/org-bullets.nvim"),
+	gh("danilshvalov/org-modern.nvim"),
+	gh("michaelb/sniprun"),
 }
 
 vim.pack.add(plugins)
 
--- update all the plugins
+vim.api.nvim_create_user_command("PackChangelog", function()
+	vim.pack.update(nil)
+end, { desc = "Show plugin changelog" })
+
 vim.api.nvim_create_user_command("PackUpdate", function()
-	vim.pack.update()
+	vim.pack.update(nil, { force = true })
+	pcall(function()
+		require("blink.cmp").build():pwait()
+	end)
 	pcall(vim.cmd.TSUpdate)
 end, { desc = "Update all the plugin installed" })
 
--- uninstall plugin
+vim.api.nvim_create_user_command("PackGet", function(opts)
+	local plugin = opts.fargs
+	vim.pack.get(plugin)
+end, { desc = "Get plugins info", nargs = "+", complete = "packadd" })
+
 vim.api.nvim_create_user_command("PackUninstall", function(opts)
 	local plugin = opts.fargs
 	vim.pack.del(plugin)
 end, { desc = "Uninstall specfic plugins", nargs = "+", complete = "packadd" })
 
--- reinstall plugin
 vim.api.nvim_create_user_command("PackReinstall", function(opts)
 	local plugin = opts.fargs
 	vim.pack.del(plugin)
 	vim.pack.add(plugin)
 end, { desc = "Reinstall specfic plugins", nargs = "+", complete = "packadd" })
 
--- colorscheme
 require("catppuccin").setup({
 	flavour = "mocha",
 	transparent_background = true,
@@ -210,7 +219,6 @@ require("catppuccin").setup({
 })
 vim.cmd.colorscheme("catppuccin")
 
--- blink
 require("blink.cmp").setup({
 	keymap = { preset = "default" },
 	cmdline = {
@@ -227,18 +235,11 @@ require("blink.cmp").setup({
 	sources = {
 		default = { "lsp", "path", "snippets", "buffer" },
 	},
-	signature = {
-		enabled = true,
-	},
 
 	fuzzy = { implementation = "prefer_rust_with_warning" },
 })
 
--- conform
 require("conform").setup({
-	-- format_on_save = {
-	-- 	lsp_format = "fallback",
-	-- },
 	formatters_by_ft = {
 		lua = { "stylua" },
 		cmake = { "cmake_format" },
@@ -289,9 +290,8 @@ vim.keymap.set("n", "<leader>cr", vim.lsp.buf.rename, {
 vim.keymap.set("n", "<leader>cl", vim.lsp.codelens.run, {
 	desc = "[C]ode [L]ens",
 })
--- fzf-lua
 require("fzf-lua").setup({
-	ui_select = true,
+	ui_select = {},
 })
 
 local function fzf_call(fn, opts)
@@ -335,12 +335,27 @@ vim.keymap.set("n", "<leader>sb", fzf_call("dap_breakpoints"), { desc = "[S]earc
 vim.keymap.set("n", "<leader>dv", fzf_call("dap_variables"), { desc = "[D]ebug variables" })
 vim.keymap.set("n", "<leader>df", fzf_call("dap_frames"), { desc = "[D]ebug frames" })
 
-require("nvim-autopairs").setup()
--- indent-blankline
-require("ibl").setup()
--- nvim-surround
+require("nvim-autopairs").setup({
+	enable_bracket_in_quote = false,
+})
+local indent = require("blink.indent")
+indent.setup({
+	scope = {
+		highlights = {
+			"BlinkIndentRed",
+			"BlinkIndentOrange",
+			"BlinkIndentYellow",
+			"BlinkIndentGreen",
+			"BlinkIndentBlue",
+			"BlinkIndentViolet",
+			"BlinkIndentCyan",
+		},
+	},
+})
+vim.keymap.set("n", "<leader>ui", function()
+	indent.enable(not indent.is_enabled())
+end, { desc = "Toggle indent guides" })
 require("nvim-surround").setup()
--- gitsigns
 local gs = require("gitsigns")
 vim.keymap.set("n", "]H", function()
 	gs.nav_hunk("next")
@@ -351,20 +366,20 @@ end, { desc = "Previous [H]unk" })
 vim.keymap.set("n", "<leader>gb", function()
 	gs.blame()
 end, { desc = "[G]it [B]lame" })
--- guess-indent
 require("guess-indent").setup({})
 
--- lazydev
 require("lazydev").setup()
 
--- lspconfig
 vim.lsp.enable("clangd")
+vim.lsp.enable("slangd")
+vim.lsp.enable("verible")
 vim.lsp.enable("csharp_ls")
 vim.lsp.enable("neocmake")
 vim.lsp.enable("gopls")
 vim.lsp.enable("jdtls")
 vim.lsp.enable("lua_ls")
 vim.lsp.enable("ty")
+vim.lsp.enable("ruff")
 vim.lsp.enable("zls")
 vim.lsp.enable("rust_analyzer")
 vim.lsp.enable("ts_ls")
@@ -375,10 +390,8 @@ vim.lsp.enable("taplo")
 vim.lsp.enable("texlab")
 vim.lsp.enable("marksman")
 vim.lsp.enable("bashls")
-vim.lsp.enable("nixd")
--- luasnip
+vim.lsp.enable("org")
 require("luasnip.loaders.from_vscode").lazy_load()
--- markdown-preview
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = "markdown",
 	callback = function()
@@ -390,16 +403,36 @@ vim.api.nvim_create_autocmd("FileType", {
 		)
 	end,
 })
--- mini.hipatterns
+require("render-markdown").setup({
+	completions = { lsp = { enabled = true } },
+	latex = {
+		enabled = true,
+		render_modes = true,
+	},
+	heading = {
+		enabled = true,
+		render_modes = true,
+	},
+})
+
 local hipatterns = require("mini.hipatterns")
 hipatterns.setup({
 	highlighters = {
 		hex_color = hipatterns.gen_highlighter.hex_color(),
 	},
 })
--- mini.move
+local animate = require("mini.animate")
+local animate_timing = animate.gen_timing.cubic({ easing = "out", duration = 100, unit = "total" })
+animate.setup({
+	cursor = {
+		enable = false,
+	},
+	scroll = { timing = animate_timing },
+	resize = { timing = animate_timing },
+	open = { timing = animate_timing },
+	close = { timing = animate_timing },
+})
 require("mini.move").setup()
--- neogit
 require("neogit").setup({
 	graph_style = "kitty",
 	integrations = {
@@ -410,7 +443,6 @@ require("neogit").setup({
 })
 vim.keymap.set("n", "<leader>gg", "<cmd>Neogit<cr>", { desc = "[G]it wrapper neo[G]it" })
 vim.keymap.set("n", "<leader>gG", "<cmd>Neogit cwd=%:p:h<cr>", { desc = "Show Neogit UI (current buffer dir)" })
--- noice
 require("noice").setup({
 	lsp = {
 		override = {
@@ -419,17 +451,14 @@ require("noice").setup({
 		},
 	},
 	presets = {
-		long_message_to_split = true, -- long messages will be sent to a split
+		long_message_to_split = true,
 		lsp_doc_border = true,
 	},
 })
--- notify
-require("notify").setup({})
--- linter
+require("notify").setup()
 local lint = require("lint")
 lint.linters_by_ft = {
 	dockerfile = { "hadolint" },
-	python = { "ruff" },
 	javascript = { "eslint_d" },
 	typescript = { "eslint_d" },
 	javascriptreact = { "eslint_d" },
@@ -456,7 +485,6 @@ vim.api.nvim_create_autocmd("BufWritePost", {
 		lint.try_lint()
 	end,
 })
--- treesitter-textobjects
 vim.keymap.set({ "x", "o" }, "af", function()
 	require("nvim-treesitter-textobjects.select").select_textobject("@function.outer", "textobjects")
 end)
@@ -499,7 +527,6 @@ vim.keymap.set({ "n", "x", "o" }, "[a", function()
 	require("nvim-treesitter-textobjects.move").goto_previous_start("@parameter.inner", "textobjects")
 end)
 
--- treesitter
 require("nvim-treesitter").install({
 	"html",
 	"javascript",
@@ -511,10 +538,12 @@ require("nvim-treesitter").install({
 	"make",
 	"cpp",
 	"c",
+	"systemverilog",
+	"cuda",
 	"asm",
 	"c_sharp",
 	"cmake",
-	"glsl",
+	"slang",
 	"java",
 	"lua",
 	"python",
@@ -537,6 +566,7 @@ require("nvim-treesitter").install({
 	"yaml",
 	"requirements",
 	"json",
+	"kdl",
 	"css",
 	"scss",
 	"sql",
@@ -553,11 +583,9 @@ vim.api.nvim_create_autocmd("FileType", {
 			return
 		end
 
-		-- check if parser exists and load it
 		if not vim.treesitter.language.add(language) then
 			return
 		end
-		-- enables syntax highlighting and other treesitter features
 		vim.treesitter.start(buf, language)
 
 		-- enables treesitter based folds
@@ -568,7 +596,6 @@ vim.api.nvim_create_autocmd("FileType", {
 		-- vim.bo.indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
 	end,
 })
--- oil
 require("oil").setup({
 	columns = {
 		"icon",
@@ -584,11 +611,8 @@ require("oil").setup({
 	watch_for_changes = true,
 })
 vim.keymap.set("n", "-", "<cmd>Oil<cr>", { desc = "Open parent directory" })
--- oil-git-status
 require("oil-git-status").setup({})
--- todo-comments
 require("todo-comments").setup({})
--- which-key
 local wk = require("which-key")
 wk.setup({})
 wk.add({
@@ -600,17 +624,15 @@ wk.add({
 	{ "<leader>s", group = "search" },
 	{ "<leader>w", group = "window" },
 	{ "<leader>x", group = "quickfix" },
+	{ "<leader>o", group = "org" },
 })
 
--- lean
 vim.g.lean_config = { mappings = true }
--- leetcode
 require("leetcode").setup({
 	cn = {
 		enabled = true,
 	},
 })
--- nvim-dap
 local dap = require("dap")
 dap.adapters.lldb = {
 	type = "executable",
@@ -698,10 +720,7 @@ require("toggleterm").setup({
 	},
 })
 
--- trouble
 require("trouble").setup({})
--- quickfix native support
-vim.cmd.packadd("cfilter")
 vim.keymap.set("n", "]q", function()
 	pcall(vim.cmd.cnext)
 end, { desc = "Next [Q]uickfix item" })
@@ -714,11 +733,9 @@ end, { desc = "Next [Q]uickfix file" })
 vim.keymap.set("n", "[Q", function()
 	pcall(vim.cmd.cpfile)
 end, { desc = "Previous [Q]uickfix file" })
--- fzf-lua integration
 local fzfluaConfig = require("fzf-lua.config")
 local actions = require("trouble.sources.fzf").actions
 fzfluaConfig.defaults.actions.files["ctrl-t"] = actions.open
--- lualine integtation
 local symbols = require("trouble").statusline({
 	mode = "lsp_document_symbols",
 	groups = {},
@@ -748,7 +765,6 @@ vim.keymap.set("n", "<leader>cs", function()
 	require("trouble").toggle({ mode = "symbols", focus = false })
 end, { desc = "[C]ode [S]ymbols" })
 
--- lualine
 require("lualine").setup({
 	sections = {
 		lualine_c = {
@@ -773,7 +789,6 @@ require("lualine").setup({
 	},
 })
 
--- multicursor
 local mc = require("multicursor-nvim")
 mc.setup()
 
@@ -803,3 +818,20 @@ mc.addKeymapLayer(function(layerSet)
 		end
 	end)
 end)
+
+local Menu = require("org-modern.menu")
+require("orgmode").setup({
+	org_agenda_files = "~/org/**/*",
+	org_default_notes_file = "~/org/refile.org",
+	ui = {
+		menu = {
+			handler = function(data)
+				Menu:new():open(data)
+			end,
+		},
+	},
+})
+require("org-bullets").setup()
+
+require("sniprun").setup({})
+vim.keymap.set({ "n", "x" }, "<M-e>", "<Plug>SnipRun", { desc = "SnipRun eval" })

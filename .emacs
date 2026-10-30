@@ -8,11 +8,10 @@
   (load custom-file t))
 
 (setq-default tab-width 4
-			  indent-tabs-mode nil
 			  display-line-numbers-type 'relative)
 
 (when (find-font (font-spec :name "Fira Code"))
-  (set-face-attribute 'default nil :font "Fira Code" :height 120))
+  (set-face-attribute 'default nil :font "Fira Code" :height 140))
 
 (add-to-list 'default-frame-alist '(alpha-background . 90))
 (when (display-graphic-p)
@@ -29,6 +28,9 @@
 (recentf-mode 1)
 (repeat-mode 1)
 (winner-mode 1)
+(show-paren-mode 1)
+(delete-selection-mode 1)
+(setq enable-recursive-minibuffers t)
 (tab-bar-mode 1)
 (editorconfig-mode 1)
 (global-hl-line-mode 1)
@@ -50,17 +52,10 @@
 (add-hook 'prog-mode-hook #'flymake-mode)
 (setq flymake-show-diagnostics-at-end-of-line t)
 
-;; Show tabs (as », matching nvim listchars) and trailing whitespace in code.
-(setq whitespace-style '(face tab-mark tabs trailing))
-(add-hook 'prog-mode-hook #'whitespace-mode)
-
-;; A-group builtins: short answers, treesit.
 (setq use-short-answers t
       confirm-kill-processes nil
       treesit-font-lock-level 4)
-;; flyspell-prog-mode NOT enabled: no spell dictionaries installed (aspell and
-;; hunspell both report no en_US). After `sudo pacman -S aspell-en` (or
-;; hunspell-en_us), re-add: (add-hook 'prog-mode-hook #'flyspell-prog-mode)
+(add-hook 'prog-mode-hook #'flyspell-prog-mode)
 
 (require 'package)
 (setq package-archives
@@ -74,18 +69,17 @@
 (use-package treesit
   :ensure nil
   :init
-  ;; Keep this list aligned with the languages used by the Neovim setup.
   (setq treesit-language-source-alist
         '((asm "https://github.com/rush-rs/tree-sitter-asm")
           (bash "https://github.com/tree-sitter/tree-sitter-bash")
           (c "https://github.com/tree-sitter/tree-sitter-c")
           (c-sharp "https://github.com/tree-sitter/tree-sitter-c-sharp")
           (cpp "https://github.com/tree-sitter/tree-sitter-cpp")
+          (cuda "https://github.com/tree-sitter-grammars/tree-sitter-cuda")
           (cmake "https://github.com/uyha/tree-sitter-cmake")
           (css "https://github.com/tree-sitter/tree-sitter-css")
           (dockerfile "https://github.com/camdencheek/tree-sitter-dockerfile")
           (fish "https://github.com/ram02z/tree-sitter-fish")
-          (glsl "https://github.com/tree-sitter-grammars/tree-sitter-glsl")
           (go "https://github.com/tree-sitter/tree-sitter-go")
           (haskell "https://github.com/tree-sitter/tree-sitter-haskell")
           (html "https://github.com/tree-sitter/tree-sitter-html")
@@ -104,6 +98,7 @@
           (regex "https://github.com/tree-sitter/tree-sitter-regex")
           (rust "https://github.com/tree-sitter/tree-sitter-rust")
           (scss "https://github.com/tree-sitter-grammars/tree-sitter-scss")
+          (slang "https://github.com/tree-sitter-grammars/tree-sitter-slang")
           (sql "https://github.com/DerekStride/tree-sitter-sql"
                "gh-pages" "src")
           (toml "https://github.com/tree-sitter-grammars/tree-sitter-toml")
@@ -117,14 +112,57 @@
           (bibtex "https://github.com/latex-lsp/tree-sitter-bibtex")
           (ini "https://github.com/justinmk/tree-sitter-ini"))))
 (defconst my/treesit-languages
-  '(asm bash c c-sharp cpp cmake css dockerfile fish glsl go haskell html java
-    javascript json ini latex lua make markdown nix python regex rust scss sql
+  '(asm bash c c-sharp cpp cuda cmake css dockerfile fish go haskell html java
+    javascript json ini latex lua make markdown nix python regex rust scss slang sql
     toml tsx typescript vue yaml zig bibtex))
 (defun treesit-install-grammars ()
   (interactive)
   (dolist (language my/treesit-languages)
     (unless (treesit-language-available-p language)
       (treesit-install-language-grammar language))))
+(setq major-mode-remap-alist
+      '((c-mode . c-ts-mode)
+        (c++-mode . c++-ts-mode)
+        (python-mode . python-ts-mode)
+        (rust-mode . rust-ts-mode)
+        (go-mode . go-ts-mode)
+        (java-mode . java-ts-mode)
+        (js-mode . js-ts-mode)
+        (typescript-mode . typescript-ts-mode)
+        (tsx-mode . tsx-ts-mode)
+        (json-mode . json-ts-mode)
+        (yaml-mode . yaml-ts-mode)
+        (conf-toml-mode . toml-ts-mode)
+        (css-mode . css-ts-mode)
+        (lua-mode . lua-ts-mode)
+        (sh-mode . bash-ts-mode)
+        (cmake-mode . cmake-ts-mode)
+        (csharp-mode . csharp-ts-mode)))
+
+(require 'c-ts-mode)
+(defun my/c-like-treesit-setup (language)
+  (when (treesit-ready-p language)
+    (let ((primary-parser (treesit-parser-create language)))
+      (setq-local syntax-propertize-function #'c-ts-mode--syntax-propertize
+                  treesit-font-lock-settings (c-ts-mode--font-lock-settings language)
+                  treesit-primary-parser primary-parser)
+      (let ((indent-rules
+             (c-ts-mode--simple-indent-rules 'cpp c-ts-mode-indent-style)))
+        (setcar indent-rules (cons language (cdar indent-rules)))
+        (setq-local treesit-simple-indent-rules indent-rules))
+      (treesit-major-mode-setup))))
+
+(define-derived-mode cuda-ts-mode c-ts-base-mode "CUDA"
+  "Major mode for CUDA, powered by tree-sitter."
+  (my/c-like-treesit-setup 'cuda))
+
+(define-derived-mode slang-ts-mode c-ts-base-mode "Slang"
+  "Major mode for Slang, powered by tree-sitter."
+  (my/c-like-treesit-setup 'slang)
+  (remove-hook 'flymake-diagnostic-functions #'flymake-cc t))
+
+(add-to-list 'auto-mode-alist '("\\.cuh?\\'" . cuda-ts-mode))
+(add-to-list 'auto-mode-alist '("\\.slang\\(?:h\\)?\\'" . slang-ts-mode))
 
 (use-package doom-themes
   :ensure t
@@ -144,7 +182,7 @@
   :init
   (setq evil-want-keybinding nil
         evil-want-C-u-scroll t
-        evil-want-C-i-jump nil
+        evil-want-C-i-jump t
         evil-undo-system 'undo-redo)
   :config
   (evil-mode 1))
@@ -172,13 +210,24 @@
   :after evil
   :config
   (evil-define-key '(normal visual) 'global (kbd "gc") #'evilnc-comment-operator))
-(use-package evil-numbers
+(use-package evil-mc
   :ensure t
   :after evil
   :config
+  (global-evil-mc-mode 1)
+  (defun my/evil-mc-toggle-freeze ()
+    "Freeze/thaw all cursors (nvim `<M-t>' toggle)."
+    (interactive)
+    (if evil-mc-frozen (evil-mc-resume-cursors) (evil-mc-pause-cursors)))
   (evil-define-key '(normal visual) 'global
-    (kbd "g C-a") #'evil-numbers/inc-at-pt
-    (kbd "g C-x") #'evil-numbers/dec-at-pt))
+    (kbd "M-n") #'evil-mc-make-and-goto-next-match
+    (kbd "M-p") #'evil-mc-make-and-goto-prev-match
+    (kbd "M-j") #'evil-mc-make-cursor-move-next-line
+    (kbd "M-k") #'evil-mc-make-cursor-move-prev-line
+    (kbd "M-t") #'my/evil-mc-toggle-freeze
+    (kbd "M-a") #'evil-mc-make-all-cursors)
+  (evil-define-key 'visual 'global
+    (kbd "gC") #'evil-mc-make-cursor-in-visual-selection-beg))
 
 (use-package expreg
   :ensure t
@@ -200,6 +249,7 @@
   (global-diff-hl-mode 1)
   (add-hook 'dired-mode-hook #'diff-hl-dired-mode)
   (add-hook 'magit-post-refresh-hook #'diff-hl-magit-post-refresh))
+(add-hook 'prog-mode-hook #'diff-hl-flydiff-mode)
 (use-package hl-todo
   :ensure t
   :init
@@ -304,8 +354,6 @@
   (eglot-stay-out-of '(flymake company))
   (eglot-max-file-watches 5000)
   :config
-  ;; Match the language servers used by the Neovim setup where Eglot
-  ;; does not provide the command by default.
   (add-to-list 'eglot-server-programs
                '((vue-mode vue-ts-mode) "vue-language-server" "--stdio"))
   (add-to-list 'eglot-server-programs
@@ -314,8 +362,13 @@
                '(markdown-ts-mode "marksman" "server"))
   (add-to-list 'eglot-server-programs
                '(nix-ts-mode "nixd"))
+  (add-to-list 'eglot-server-programs
+               '((cuda-ts-mode) "clangd"))
+  (add-to-list 'eglot-server-programs
+               '((slang-ts-mode) "slangd"))
   :commands (eglot eglot-ensure)
   :hook ((go-mode python-mode java-mode c-mode c++-mode rust-mode
+          cuda-ts-mode slang-ts-mode
           go-ts-mode python-ts-mode java-ts-mode c-ts-mode c++-ts-mode
           rust-ts-mode
           lua-mode lua-ts-mode
@@ -336,8 +389,6 @@
   :ensure t
   :commands (apheleia-format-buffer)
   :config
-  ;; Keep formatting manual: do not enable `apheleia-mode' or
-  ;; `apheleia-global-mode'.
   (setf (alist-get 'ruff-fix apheleia-formatters)
         '("ruff" "check" "--fix" "--stdin-filename" filepath "-"))
   (dolist (entry
@@ -364,6 +415,7 @@
              (c-ts-mode . clang-format)
              (c++-mode . clang-format)
              (c++-ts-mode . clang-format)
+             (cuda-ts-mode . clang-format)
              (sh-mode . shfmt)
              (bash-ts-mode . shfmt)
              (zsh-mode . shfmt)
@@ -385,7 +437,6 @@
   (setf (alist-get 'bibtex-tidy apheleia-formatters)
         '("bibtex-tidy" "--no-modify")))
 
-;; P0: builtin dired + popup rules (Doom :emacs dired / :ui popup subset).
 (use-package dired
   :ensure nil
   :custom
@@ -393,12 +444,13 @@
   (dired-recursive-copies 'always)
   (dired-recursive-deletes 'top)
   (dired-listing-switches "-ahl -v --group-directories-first")
-  (dired-omit-files "^\\.[^.]\\|^\\.\\.?$\\|\\.elc$\\|\\.o$\\|\\.class$\\|\\.meta$")
   :config
   (require 'dired-x)
   (add-hook 'dired-mode-hook #'dired-omit-mode)
   (require 'wdired)
   (define-key dired-mode-map (kbd "C-c C-e") #'wdired-change-to-wdired-mode))
+(setq dired-auto-revert-buffer t)
+(with-eval-after-load 'wgrep (setq wgrep-auto-save-buffer t))
 (use-package nerd-icons
   :ensure t)
 
@@ -418,23 +470,6 @@
   :custom
   (indent-bars-treesit-support t)
   :hook ((prog-mode yaml-mode) . indent-bars-mode))
-
-(setq display-buffer-alist
-      '(("\\*\\(Help\\|eldoc.*\\)\\*"
-         (display-buffer-reuse-window display-buffer-in-side-window)
-         (side . bottom) (slot . 0) (window-height . 0.33))
-        ("\\*\\(Compilation\\|Flymake.*\\|eglot.*\\|Messages\\)\\*"
-         (display-buffer-reuse-window display-buffer-in-side-window)
-         (side . bottom) (slot . 1) (window-height . 0.33))
-        ("\\*vterm\\*"
-         (display-buffer-reuse-window display-buffer-in-side-window)
-         (side . bottom) (slot . 2) (window-height . 0.33))
-        ("\\*\\(shell\\|eshell\\|term\\).*"
-         (display-buffer-reuse-window display-buffer-in-side-window)
-        (side . bottom) (slot . 2) (window-height . 0.33))
-        ("\\*\\(grep\\|ripgrep\\|occur\\|xref\\).*"
-         (display-buffer-reuse-window display-buffer-in-side-window)
-         (side . bottom) (slot . 3) (window-height . 0.33))))
 
 (defvar leader-map (make-sparse-keymap))
 (defvar leader-find-map (make-sparse-keymap))
@@ -461,21 +496,38 @@
 (define-key leader-search-map (kbd "i") #'consult-imenu)
 (define-key leader-search-map (kbd "r") #'consult-register)
 (define-key leader-search-map (kbd "d") #'consult-flymake)
+(define-key leader-search-map (kbd "y") #'consult-yank-from-kill-ring)
+(define-key leader-search-map (kbd "m") #'consult-mark)
+(define-key leader-search-map (kbd "o") #'consult-outline)
+(global-set-key (kbd "M-y") #'consult-yank-from-kill-ring)
+(global-set-key [remap goto-line] #'consult-goto-line)
 
 (define-key leader-map (kbd "g") leader-git-map)
 (define-key leader-git-map (kbd "g") #'magit-status)
 (define-key leader-git-map (kbd "G") #'magit-project-status)
 
+(defvar leader-ui-map (make-sparse-keymap))
+(defun my/toggle-flymake-inline-diagnostics ()
+  (interactive)
+  (setq-default flymake-show-diagnostics-at-end-of-line
+                (not flymake-show-diagnostics-at-end-of-line))
+  (when (bound-and-true-p flymake-mode)
+    (flymake-start t))
+  (message "Inline diagnostics %s"
+           (if flymake-show-diagnostics-at-end-of-line "enabled" "disabled")))
+
 
 (define-key leader-map (kbd "c") leader-code-map)
-(define-key leader-code-map (kbd "d") #'flymake-show-buffer-diagnostics)
+(define-key leader-code-map (kbd "d") #'flymake-show-diagnostics)
 (define-key leader-code-map (kbd "a") #'eglot-code-actions)
 (define-key leader-code-map (kbd "r") #'eglot-rename)
 (define-key leader-code-map (kbd "f") #'apheleia-format-buffer)
 (define-key leader-code-map (kbd "h") #'eldoc-doc-buffer)
 (define-key leader-code-map (kbd "i") #'eglot-inlay-hints-mode)
-(define-key leader-code-map (kbd "R") #'eglot-reconnect)
-(define-key leader-code-map (kbd "s") #'eglot-shutdown)
+
+(define-key leader-map (kbd "u") leader-ui-map)
+(define-key leader-ui-map (kbd "h") #'eglot-inlay-hints-mode)
+(define-key leader-ui-map (kbd "d") #'my/toggle-flymake-inline-diagnostics)
 
 (define-key leader-map (kbd "p") leader-project-map)
 (define-key leader-project-map (kbd "p") #'project-switch-project)
@@ -488,16 +540,17 @@
 
 (define-key leader-map (kbd "t") leader-terminal-map)
 (define-key leader-terminal-map (kbd "t") #'vterm)
-(define-key leader-terminal-map (kbd "n") #'vterm-other-window)
+(define-key leader-terminal-map (kbd "o") #'vterm-other-window)
 (define-key leader-map (kbd "w") leader-window-map)
 (define-key leader-window-map (kbd "s") #'split-window-below)
 (define-key leader-window-map (kbd "v") #'split-window-right)
 (define-key leader-window-map (kbd "o") #'other-window)
+(define-key leader-window-map (kbd "u") #'winner-undo)
+(define-key leader-window-map (kbd "r") #'winner-redo)
 (define-key leader-git-map (kbd "n") #'diff-hl-next-hunk)
 (define-key leader-git-map (kbd "p") #'diff-hl-previous-hunk)
 (define-key evil-normal-state-map (kbd "]H") #'diff-hl-next-hunk)
 (define-key evil-normal-state-map (kbd "[H") #'diff-hl-previous-hunk)
-(define-key evil-normal-state-map (kbd "-") #'dired-jump)
 (define-key evil-normal-state-map (kbd "]e") #'flymake-goto-next-error)
 (define-key evil-normal-state-map (kbd "[e") #'flymake-goto-prev-error)
 (setq delete-by-moving-to-trash t)
@@ -532,8 +585,8 @@
   (org-pretty-entities t)
   (org-return-follows-link t)
   (org-src-fontify-natively t)
-  (org-edit-src-content-indentation 0)
-  (org-ellipsis " …"))
+  (org-edit-src-content-indentation 0))
+(setq org-log-done 'time)
 (use-package org-modern
   :ensure t
   :after org
@@ -560,7 +613,6 @@
   (which-key-mode 1)
   :custom
   (which-key-idle-delay 0.5)
-  (which-key-separator " → ")
   :config
   (which-key-add-key-based-replacements
    "SPC f" "Find"
@@ -587,6 +639,27 @@
   (add-to-list 'completion-at-point-functions #'cape-dabbrev)
   (add-to-list 'completion-at-point-functions #'cape-file)
   (add-to-list 'completion-at-point-functions #'cape-history))
+(with-eval-after-load 'corfu (require 'corfu-history) (corfu-history-mode 1))
+
+(use-package tempel
+  :ensure t
+  :bind (("M-+" . tempel-complete)
+         ("M-*" . tempel-insert))
+  :init
+  (defun my/tempel-setup-capf ()
+    (setq-local completion-at-point-functions
+                (cons #'tempel-expand completion-at-point-functions)))
+  (add-hook 'prog-mode-hook #'my/tempel-setup-capf)
+  (add-hook 'text-mode-hook #'my/tempel-setup-capf))
+
+(use-package tempel-collection
+  :ensure t
+  :after tempel)
+
+(use-package markdown-mode
+  :ensure t
+  :commands (markdown-mode gfm-mode))
+(setq markdown-fontify-code-blocks-natively t)
 
 (use-package corfu-popupinfo
   :ensure nil
@@ -613,6 +686,11 @@
   :ensure t
   :init
   (vertico-mode 1))
+(with-eval-after-load 'vertico
+  (require 'vertico-directory)
+  (define-key vertico-map (kbd "RET") #'vertico-directory-enter)
+  (define-key vertico-map (kbd "DEL") #'vertico-directory-delete-char)
+  (define-key vertico-map (kbd "M-DEL") #'vertico-directory-delete-word))
 
 (use-package vertico-posframe
   :ensure t
@@ -627,8 +705,74 @@
   :config
   (add-hook 'vterm-mode-hook #'goto-address-mode)
   (add-hook 'vterm-mode-hook (lambda () (display-line-numbers-mode 0))))
-
-(use-package multiple-cursors
+(use-package ligature
   :ensure t
-  :bind
-  ())
+  :load-path "path-to-ligature-repo"
+  :config
+  ;; Enable the "www" ligature in every possible major mode
+  (ligature-set-ligatures 't '("www"))
+  ;; Enable traditional ligature support in eww-mode, if the
+  ;; `variable-pitch' face supports it
+  (ligature-set-ligatures 'eww-mode '("ff" "fi" "ffi"))
+  ;; Enable all Cascadia and Fira Code ligatures in programming modes
+  (ligature-set-ligatures 'prog-mode
+                        '(;; == === ==== => =| =>>=>=|=>==>> ==< =/=//=// =~
+                          ;; =:= =!=
+                          ("=" (rx (+ (or ">" "<" "|" "/" "~" ":" "!" "="))))
+                          ;; ;; ;;;
+                          (";" (rx (+ ";")))
+                          ;; && &&&
+                          ("&" (rx (+ "&")))
+                          ;; !! !!! !. !: !!. != !== !~
+                          ("!" (rx (+ (or "=" "!" "\." ":" "~"))))
+                          ;; ?? ??? ?:  ?=  ?.
+                          ("?" (rx (or ":" "=" "\." (+ "?"))))
+                          ;; %% %%%
+                          ("%" (rx (+ "%")))
+                          ;; |> ||> |||> ||||> |] |} || ||| |-> ||-||
+                          ;; |->>-||-<<-| |- |== ||=||
+                          ;; |==>>==<<==<=>==//==/=!==:===>
+                          ("|" (rx (+ (or ">" "<" "|" "/" ":" "!" "}" "\]"
+                                          "-" "=" ))))
+                          ;; \\ \\\ \/
+                          ("\\" (rx (or "/" (+ "\\"))))
+                          ;; ++ +++ ++++ +>
+                          ("+" (rx (or ">" (+ "+"))))
+                          ;; :: ::: :::: :> :< := :// ::=
+                          (":" (rx (or ">" "<" "=" "//" ":=" (+ ":"))))
+                          ;; // /// //// /\ /* /> /===:===!=//===>>==>==/
+                          ("/" (rx (+ (or ">"  "<" "|" "/" "\\" "\*" ":" "!"
+                                          "="))))
+                          ;; .. ... .... .= .- .? ..= ..<
+                          ("\." (rx (or "=" "-" "\?" "\.=" "\.<" (+ "\."))))
+                          ;; -- --- ---- -~ -> ->> -| -|->-->>->--<<-|
+                          ("-" (rx (+ (or ">" "<" "|" "~" "-"))))
+                          ;; *> */ *)  ** *** ****
+                          ("*" (rx (or ">" "/" ")" (+ "*"))))
+                          ;; www wwww
+                          ("w" (rx (+ "w")))
+                          ;; <> <!-- <|> <: <~ <~> <~~ <+ <* <$ </  <+> <*>
+                          ;; <$> </> <|  <||  <||| <|||| <- <-| <-<<-|-> <->>
+                          ;; <<-> <= <=> <<==<<==>=|=>==/==//=!==:=>
+                          ;; << <<< <<<<
+                          ("<" (rx (+ (or "\+" "\*" "\$" "<" ">" ":" "~"  "!"
+                                          "-"  "/" "|" "="))))
+                          ;; >: >- >>- >--|-> >>-|-> >= >== >>== >=|=:=>>
+                          ;; >> >>> >>>>
+                          (">" (rx (+ (or ">" "<" "|" "/" ":" "=" "-"))))
+                          ;; #: #= #! #( #? #[ #{ #_ #_( ## ### #####
+                          ("#" (rx (or ":" "=" "!" "(" "\?" "\[" "{" "_(" "_"
+                                       (+ "#"))))
+                          ;; ~~ ~~~ ~=  ~-  ~@ ~> ~~>
+                          ("~" (rx (or ">" "=" "-" "@" "~>" (+ "~"))))
+                          ;; __ ___ ____ _|_ __|____|_
+                          ("_" (rx (+ (or "_" "|"))))
+                          ;; Fira code: 0xFF 0x12
+                          ("0" (rx (and "x" (+ (in "A-F" "a-f" "0-9")))))
+                          ;; Fira code:
+                          "Fl"  "Tl"  "fi"  "fj"  "fl"  "ft"
+                          ;; The few not covered by the regexps.
+                          "{|"  "[|"  "]#"  "(*"  "}#"  "$>"  "^="))
+  ;; Enables ligature checks globally in all buffers. You can also do it
+  ;; per mode with `ligature-mode'.
+  (global-ligature-mode t))
